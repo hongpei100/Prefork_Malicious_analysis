@@ -192,6 +192,10 @@ def classify_pkt(flow, key): #will occur flow = [] status....
         #print((str(avaliable_pid) + "MAN FLOW = ") , flow)
         with open(flowname, 'wb') as f1:
             with open(keyname, 'wb') as f2:
+                f1.truncate(0)
+                f1.seek(0)
+                f2.truncate(0)
+                f2.seek(0)
                 pickle.dump(flow, f1)
                 pickle.dump(key, f2)
     
@@ -233,7 +237,7 @@ if __name__ == "__main__":
     ###
 
     while True:
-        if recv_pkt_amt >= 5000:
+        if recv_pkt_amt >= 1000:
             break
         
         #-----RECV FROM DEVICE------#
