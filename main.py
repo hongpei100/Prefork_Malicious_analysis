@@ -1,11 +1,6 @@
 import os
-import json
-import time
-import fcntl
 import torch
 import hashlib
-import logging
-import datetime
 import classifier
 import numpy as np
 import socket, sys, pickle
@@ -13,13 +8,12 @@ from struct import *
 from threading import Timer
 import multiprocessing as mp
 from pathlib import Path
-import grp, pwd
 import subprocess
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
 BENIGN_IDX = 10
-CPU_CORE = 8 #os.cpu_count()
+CPU_CORE = os.cpu_count()
 
 PKT_CLASSIFIER = classifier.CNN_RNN()
 PKT_CLASSIFIER.load_state_dict(torch.load("pkt_classifier.pt", map_location=torch.device("cpu")))
@@ -52,7 +46,6 @@ Lock = mp.Lock()
 #     FIN >>= 0
 
 #     return FIN
-
 
 def get_key(pkt):
     key = ''
@@ -128,11 +121,11 @@ def get_key(pkt):
         #     print( 'Protocol other than TCP/UDP/ICMP' )
 
     return key
-
+# get_key()
 
 def run_server():
-    
     global status_process
+
     #--------IPC-----------#
     for client_id in range(CPU_CORE - 1):
         process = subprocess.Popen(["python3", "client.py"])
@@ -144,12 +137,13 @@ def run_server():
         client.setblocking(False)
         clients.append(client)
         status_process.append(0)
-    
+# run_server()    
 
 
 def hash_key(key):
     new_key = int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16) % (CPU_CORE - 1)
     return new_key
+# hash_key
 
 def check_idle():
     global busy_process
@@ -166,6 +160,7 @@ def check_idle():
                 return ID
             except:
                 pass
+# check_idle()
 
 def classify_pkt(flow, key): #will occur flow = [] status....
         
@@ -173,6 +168,7 @@ def classify_pkt(flow, key): #will occur flow = [] status....
         global status_process
 
         if(busy_process < CPU_CORE - 1):
+            # pkt_dest = time.process_time_ns() % proc_create_amt
             avaliable_pid = hash_key(key)
             while(status_process[avaliable_pid] == 1): #Linear probing, take no function call
                 avaliable_pid = (avaliable_pid + 1) % (CPU_CORE - 1)
@@ -203,7 +199,7 @@ def classify_pkt(flow, key): #will occur flow = [] status....
         #print("PROCESS STATUS = ", status_process)
 
         flow.clear()
-        
+# classify_pkt()
 
 
 if __name__ == "__main__":
@@ -213,14 +209,9 @@ if __name__ == "__main__":
     except socket.error as e:
         print( e )
         sys.exit()
-
-    
-    # mkdir for log time consumimg
-    Path("./time_dir").mkdir(parents=True, exist_ok=True)
     
     # create the log file directory if path is not exist
     Path("./log_file").mkdir(parents=True, exist_ok=True)
-
 
     flows = {}
     timers = {}
@@ -228,31 +219,16 @@ if __name__ == "__main__":
 
     run_server()
     ser.setblocking(False)
-    #while(True):
-    #    qeqeqe = 5
-    ###
-    # t_key = 0
-    # t_proc = 0
-    # t_while_s = time.process_time()
-    ###
+    print(f"CPU_CORE: {CPU_CORE}")
 
     while True:
-        if recv_pkt_amt >= 1000:
+        if recv_pkt_amt >= 10:
             break
         
         #-----RECV FROM DEVICE------#
         packet = s.recvfrom( 65565 )
         pkt = packet[0]
-
-        ###
-        # t_key_s = time.process_time()
-        ###
         key = get_key(pkt)
-        #print("KEY TYPE = ", type(key))
-        ###
-        # t_key_e = time.process_time()
-        # t_key += (t_key_e - t_key_s)
-        ###
 
         recv_pkt_amt += 1
         
@@ -276,16 +252,12 @@ if __name__ == "__main__":
 
             if len( flows[key] ) == 8:
                 # do classification
-                # t_proc_s = time.process_time()
                 classify_pkt(flows[key], key)
-                #generate_proc(flows[key], key)
-                # t_proc_e = time.process_time()
-                # t_proc += ( t_proc_e - t_proc_s )
             else:
                 flows[key].append( pkt )
                 timers[key] = Timer( 1.0, classify_pkt, (flows[key], key) )
                 timers[key].start()
-
+# if __name__ == "__main__"
     
 
 while(True):

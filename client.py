@@ -1,12 +1,8 @@
 import socket, pickle
-import json
 import torch
 import classifier
 import numpy as np
 import logging
-import datetime
-import os
-import time
 import multiprocessing as mp
 
 FIRST_N_PKTS = 8
@@ -32,6 +28,7 @@ class JsonFilter(logging.Filter):
         record.c = self.c
         record.num_pkts = self.num_pkts
         return True
+# class JsonFilter
 
 
 def pkt2nparr(flow):
@@ -68,6 +65,7 @@ def pkt2nparr(flow):
     pkt2np = np.array(pkt_content).reshape(1, 8, 80)
 
     return pkt2np
+# def pkt2nparr()
 
 PKT_CLASSIFIER = classifier.CNN_RNN()
 PKT_CLASSIFIER.load_state_dict(torch.load("pkt_classifier.pt", map_location=torch.device("cpu")))
@@ -96,7 +94,7 @@ while(True):
     
     #----NonBlockiing----#
     try:
-        t_start = time.process_time()
+        # t_start = time.process_time()
         
         signal = s.recv(4096)
         if(signal == (b'')):
@@ -112,45 +110,27 @@ while(True):
         flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
         output = PKT_CLASSIFIER(flow2tensor)
         _, predicted = torch.max(output, 1)
-        
-        
-        # uid = pwd.getpwnam("user").pw_uid
-        # gid = grp.getgrnam("user").gr_gid
-        # os.chown("./log_file", uid, gid)
-        # os.chown("./time_dir", uid, gid)
 
+        print(f"predicted: {predicted[0]}")
         # class 10 represents the benign flow
-        # if predicted[0] != 10:
-        lock.acquire()
-        
-        logger = logging.getLogger()
-        filter_ = JsonFilter()
-        logger.addFilter( filter_ )
-        inf = key.split(' ')
-        filter_.s_addr = inf[1]
-        filter_.d_addr = inf[3]
-        filter_.s_port = inf[5]
-        filter_.d_port = inf[7]
-        filter_.c = str( predicted[0] )
-        filter_.num_pkts = len( flow )
-        logger.info( key )
-        lock.release()
-
-        t_end = time.process_time()
-        t_consume = t_end - t_start
-        
-        print(f"\n******\nt_consume: {t_consume}\n******\n")
-        
-        # _log_filename = str(t_consume*1000)
-    
-        # logging.getLogger('').handlers = []
-        # logging.basicConfig(level=logging.INFO, filename="./time_dir/" + _log_filename, filemode='w',
-        #                     format='[%(asctime)s] %(message)s',
-        #                     datefmt='%Y%m%d %H:%M:%S',
-        # )
-        # logging.warning(t_consume)
-        
-        #print("Classification finished....")
+        if predicted[0] != 10:
+            lock.acquire()
+            
+            logger = logging.getLogger()
+            filter_ = JsonFilter()
+            logger.addFilter( filter_ )
+            inf = key.split(' ')
+            inf_len = len(inf)
+            if "s_addr" in inf:
+                filter_.s_addr = inf[1]
+                filter_.d_addr = inf[3]
+                if "s_port" in inf:
+                    filter_.s_port = inf[5]
+                    filter_.d_port = inf[7]
+            filter_.c = str( predicted[0] )
+            filter_.num_pkts = len( flow )
+            logger.info( key )
+            lock.release()
 
         s.send(b'\x00')
         #print("Client" + str(MYID) + " successfully send..............")
@@ -159,7 +139,7 @@ while(True):
         #print("Client" + str(MYID) + " successfully send..............")
     except:
         pass
-
+# while
 #print("SUM = ", Sum, ", line = ", line)
 #f = open("performance.txt", "a")
 #f.write(str(Sum) + ', ' + str(line) + '\n')
