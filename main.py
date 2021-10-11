@@ -1,4 +1,3 @@
-import os
 import torch
 import hashlib
 import classifier
@@ -8,7 +7,10 @@ from struct import *
 from threading import Timer
 import multiprocessing as mp
 from pathlib import Path
-import subprocess
+import os, subprocess
+import json, logging
+import datetime
+import signal
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
@@ -139,7 +141,6 @@ def run_server():
         status_process.append(0)
 # run_server()    
 
-
 def hash_key(key):
     new_key = int(hashlib.md5(key.encode("utf-8")).hexdigest(), 16) % (CPU_CORE - 1)
     return new_key
@@ -201,8 +202,7 @@ def classify_pkt(flow, key): #will occur flow = [] status....
         flow.clear()
 # classify_pkt()
 
-
-if __name__ == "__main__":
+def main():
     # open a socket
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs( 0x0003 ) )
@@ -212,25 +212,71 @@ if __name__ == "__main__":
     
     # create the log file directory if path is not exist
     Path("./log_file").mkdir(parents=True, exist_ok=True)
+    log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
+    formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
+                          "source address": "%(s_addr)s",
+                          "destination address": "%(d_addr)s",
+                          "source port": "%(s_port)s",
+                          "destination port": "%(d_port)s",
+                          "class": "%(c)s",
+                          "number of packets": "%(num_pkts)s"
+    })
+    logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, filemode='a',
+                            format=formate,
+                            datefmt='%Y/%m/%d %H:%M:%S'
+    )
 
+    global status_process
+    global clients
+    global busy_process
     flows = {}
     timers = {}
     recv_pkt_amt = 0
 
     run_server()
     ser.setblocking(False)
-    print(f"CPU_CORE: {CPU_CORE}")
+
+    # def signal_handler(signum, frame):
+    #     global busy_process
+    #     global status_process
+    #     global clients
+    #     while(True):
+    #         for ID in range(CPU_CORE - 1):
+    #             try:
+    #                 p_status = clients[ID].recv(4096)
+    #                 Lock.acquire()
+    #                 status_process[ID] = 0
+    #                 busy_process -= 1
+    #                 Lock.release()
+    #             except:
+    #                 pass
+                
+    #         stop = True
+    #         for ID in range(CPU_CORE - 1):
+    #             if(status_process[ID] == 1):
+    #                 stop = False
+    #                 break
+
+    #         if(stop == True):
+    #             s.close()
+    #             ser.close()
+    #             print("--------END PROCESS----------")
+    #             break
+    # # signal_handler()
+
+    # # capture SIGINT signal to avoid the generating of the zombie processes
+    # signal.signal(signal.SIGINT, signal_handler)
 
     while True:
-        if recv_pkt_amt >= 10:
-            break
+        # if recv_pkt_amt >= 10:
+        #     break
         
         #-----RECV FROM DEVICE------#
         packet = s.recvfrom( 65565 )
         pkt = packet[0]
         key = get_key(pkt)
 
-        recv_pkt_amt += 1
+        # recv_pkt_amt += 1
         
         #--------IPC-----------#
         for i in range(CPU_CORE - 1):
@@ -257,39 +303,8 @@ if __name__ == "__main__":
                 flows[key].append( pkt )
                 timers[key] = Timer( 1.0, classify_pkt, (flows[key], key) )
                 timers[key].start()
-# if __name__ == "__main__"
-    
+    # while
+# main()
 
-while(True):
-    for ID in range(CPU_CORE - 1):
-        try:
-            p_status = clients[ID].recv(4096)
-            Lock.acquire()
-            status_process[ID] = 0
-            busy_process -= 1
-            Lock.release()
-        except:
-            pass
-        
-    stop = True
-    for ID in range(CPU_CORE - 1):
-        if(status_process[ID] == 1):
-            stop = False
-            break
-
-    if(stop == True):
-        s.close()
-        ser.close()
-        print("--------END PROCESS----------")
-        break
-    #else:
-    #    print("BUSY PRCOESS = ", status_process, " NUM =", busy_process)
-    #    #    print("WAITNG...........: i  = ",i)
-
-    ###
-    # t_while_e = time.process_time()
-    # print("****************")
-    # print(f"average get key time: {(t_key / recv_pkt_amt) * 1000}")
-    # print( f"Average open process time: { ( t_proc / recv_pkt_amt ) * 1000 }" )
-    # print((t_while_e - t_while_s)*1000, end="\n****************\n")
-    ##
+if __name__ == "__main__":
+    main()

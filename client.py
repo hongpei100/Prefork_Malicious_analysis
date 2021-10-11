@@ -4,6 +4,7 @@ import classifier
 import numpy as np
 import logging
 import multiprocessing as mp
+import time
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
@@ -111,7 +112,7 @@ while(True):
         output = PKT_CLASSIFIER(flow2tensor)
         _, predicted = torch.max(output, 1)
 
-        print(f"predicted: {predicted[0]}")
+        # print(f"predicted: {predicted[0]}")
         # class 10 represents the benign flow
         if predicted[0] != 10:
             lock.acquire()
@@ -132,6 +133,11 @@ while(True):
             logger.info( key )
             lock.release()
 
+        # t_end = time.process_time()
+        # t_consume = t_end - t_start
+        
+        # print(f"\n******\nt_consume: {t_consume}\n******\n")
+
         s.send(b'\x00')
         #print("Client" + str(MYID) + " successfully send..............")
     except ValueError:
@@ -139,9 +145,4 @@ while(True):
         #print("Client" + str(MYID) + " successfully send..............")
     except:
         pass
-# while
-#print("SUM = ", Sum, ", line = ", line)
-#f = open("performance.txt", "a")
-#f.write(str(Sum) + ', ' + str(line) + '\n')
-#f.close()
 
