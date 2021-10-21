@@ -117,7 +117,7 @@ def merge_log():
     for num in range(CPU_CORE - 1):
         merge_sub = ("./log_file/" + datetime.datetime.now().strftime(f"%Y-%m-%d-" + str(num) +".log"))
         with open(merge_sub, "r+") as rf:
-            words = rf.readlines(1000)
+            words = rf.readlines()
         for word in words:
             my_list.append(word)
     
