@@ -8,7 +8,6 @@ from threading import Timer
 import multiprocessing as mp
 from pathlib import Path
 import os, subprocess
-import json, logging
 import datetime
 import signal
 import time
@@ -44,6 +43,7 @@ def get_key(pkt):
 
     # Parse IP packets, IP Protocol number = 8
     if eth_protocol == 8:
+
 	    # Parse IP header
 	    # take first 20 characters for the ip header
         ip_header = pkt[eth_length: 20+eth_length]
@@ -125,6 +125,7 @@ def merge_log():
         my_list.sort(key=lambda x:x.split()[2])
         for record in my_list:
             wf.writelines(record)
+# merge_log()
 
 def run_server():
     global status_process, process_group
@@ -171,40 +172,31 @@ def classify_pkt(flow, key): #will occur flow = [] status....
     process_amt = CPU_CORE - 1
 
     if(busy_process < CPU_CORE - 1):
-        # avaliable_pid = hash_key(key)
         avaliable_pid = time.process_time_ns() % process_amt
-        while(status_process[avaliable_pid] == 1): #Linear probing, take no function call
+        while(status_process[avaliable_pid] == 1): # Linear probing, take no function call
             avaliable_pid = (avaliable_pid + 1) % process_amt
-
-    else: #busy_process >=8
+    else:
         avaliable_pid = check_idle()
 
     Lock.acquire()
     status_process[avaliable_pid] = 1
     busy_process += 1
     Lock.release()
-    
-    #print("AVALI = ", avaliable_pid)
+
     flowname = './buffer/flowbuffer-' + str(avaliable_pid)
     keyname = './buffer/keybuffer-' + str(avaliable_pid)
 
-    #print((str(avaliable_pid) + "MAN FLOW = ") , flow)
     with open(flowname, 'wb+') as f1:
         with open(keyname, 'wb+') as f2:
-            f1.truncate(0)
-            f1.seek(0)
-            f2.truncate(0)
-            f2.seek(0)
             pickle.dump(flow, f1)
             pickle.dump(key, f2)
 
     clients[avaliable_pid].send(b'\x00')
-    #print("PROCESS STATUS = ", status_process)
-
     flow.clear()
 # classify_pkt()
 
 def main():
+
     # open a socket
     try:
         s = socket.socket( socket.AF_PACKET , socket.SOCK_RAW , socket.ntohs( 0x0003 ) )
@@ -213,22 +205,6 @@ def main():
         sys.exit()
 
     Path("./buffer").mkdir(parents=True, exist_ok=True)
-
-    # create the log file directory if path is not exist
-    # Path("./log_file").mkdir(parents=True, exist_ok=True)
-    # log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
-    # formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
-    #                       "source address": "%(s_addr)s",
-    #                       "destination address": "%(d_addr)s",
-    #                       "source port": "%(s_port)s",
-    #                       "destination port": "%(d_port)s",
-    #                       "class": "%(c)s",
-    #                       "number of packets": "%(num_pkts)s"
-    # })
-    # logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, filemode='a',
-    #                         format=formate,
-    #                         datefmt='%Y/%m/%d %H:%M:%S'
-    # )
 
     global status_process
     global clients
@@ -245,7 +221,9 @@ def main():
         global status_process
         global clients
 
-        time.sleep(2)
+        # sleep for a long time due to Timer may trasmit data after finding 
+        # there's no busy process
+        time.sleep(5)
         while(True):
             for ID in range(CPU_CORE - 1):
                 try:
@@ -263,13 +241,19 @@ def main():
                     stop = False
                     break
 
+            
             if(stop == True):
+
+                # check there's no busy_process twice
+                if busy_process != 0:
+                    continue
                 merge_log()
                 s.close()
                 ser.close()
-                print("--------END PROCESS----------")
+                print("\n--------END PROCESS----------")
                 break
         # while
+
         sys.exit(0)
     # signal_handler()
 

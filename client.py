@@ -14,7 +14,7 @@ FIRST_N_BYTES = 80
 BENIGN_IDX = 10
 CPU_CORE = os.cpu_count()
 
-lock = mp.Lock()
+# lock = mp.Lock()
 
 class JsonFilter(logging.Filter):
     s_addr = 's_addr'
@@ -116,52 +116,45 @@ flow = []
 key = ''
 
 def signal_handler(signum, frame):
-
-    # Instantly send the stop signal to main process,
-    # and complete the work interrupted while receiving the SIGINT.
-    s.send(b'\x00')
-
-    try:
-        if(start_signal == (b'')):
-            s.close()
-            sys.exit(0)
-        
-        with open(flowname, 'rb') as f1:
-            with open(keyname, 'rb') as f2:
-                flow = pickle.load(f1)
-                key  = pickle.load(f2)
-        
-        dealt_flow = pkt2nparr(flow)
-        flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
-        output = PKT_CLASSIFIER(flow2tensor)
-        _, predicted = torch.max(output, 1)
-
-        # class 10 represents the benign flow
-        if predicted[0] != 10:
-            lock.acquire()
+    while True:
+        try:
+            start_signal = s.recv(4096)
+            if(start_signal == (b'')):
+                s.close()
+                sys.exit(0)
             
-            logger = logging.getLogger()
-            filter_ = JsonFilter()
-            logger.addFilter( filter_ )
-            inf = key.split(' ')
-            if "s_addr" in inf:
-                filter_.s_addr = inf[1]
-                filter_.d_addr = inf[3]
-                if "s_port" in inf:
-                    filter_.s_port = inf[5]
-                    filter_.d_port = inf[7]
-            filter_.c = str( predicted[0] )
-            filter_.num_pkts = len( flow )
-            logger.info( key )
-            lock.release()
+            with open(flowname, 'rb') as f1:
+                with open(keyname, 'rb') as f2:
+                    flow = pickle.load(f1)
+                    key  = pickle.load(f2)
+            
+            dealt_flow = pkt2nparr(flow)
+            flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
+            output = PKT_CLASSIFIER(flow2tensor)
+            _, predicted = torch.max(output, 1)
 
-        s.send(b'\x00')
-    except ValueError:
-        s.send(b'\x00')
-    except:
-        pass
+            # class 10 represents the benign flow
+            if predicted[0] != 10:
+                logger = logging.getLogger()
+                filter_ = JsonFilter()
+                logger.addFilter( filter_ )
+                inf = key.split(' ')
+                if "s_addr" in inf:
+                    filter_.s_addr = inf[1]
+                    filter_.d_addr = inf[3]
+                    if "s_port" in inf:
+                        filter_.s_port = inf[5]
+                        filter_.d_port = inf[7]
+                filter_.c = str( predicted[0] )
+                filter_.num_pkts = len( flow )
+                logger.info( key )
 
-    sys.exit(0)
+            s.send(b'\x00')
+        except ValueError:
+            s.send(b'\x00')
+        except:
+            s.send(b'\x00')
+            pass
 # signal_handler()
 
 signal.signal(signal.SIGINT, signal_handler)
@@ -170,8 +163,6 @@ while(True):
     
     #----NonBlockiing----#
     try:
-        # t_start = time.process_time()
-        
         start_signal = s.recv(4096)
         if(start_signal == (b'')):
             s.close()
@@ -189,8 +180,6 @@ while(True):
 
         # class 10 represents the benign flow
         if predicted[0] != 10:
-            lock.acquire()
-            
             logger = logging.getLogger()
             filter_ = JsonFilter()
             logger.addFilter( filter_ )
@@ -204,18 +193,9 @@ while(True):
             filter_.c = str( predicted[0] )
             filter_.num_pkts = len( flow )
             logger.info( key )
-            lock.release()
-
-        # t_end = time.process_time()
-        # t_consume = t_end - t_start
-        
-        # print(f"\n******\nt_consume: {t_consume}\n******\n")
-
         s.send(b'\x00')
-        #print("Client" + str(MYID) + " successfully send..............")
     except ValueError:
         s.send(b'\x00')
-        #print("Client" + str(MYID) + " successfully send..............")
     except:
         pass
 # while
