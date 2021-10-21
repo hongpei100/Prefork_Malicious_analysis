@@ -110,6 +110,22 @@ def get_key(pkt):
     return key
 # get_key()
 
+def merge_log():
+    my_list = []
+    merge_main = ("./log_file/" + datetime.datetime.now().strftime(f"%Y-%m-%d" + ".log"))
+    
+    for num in range(CPU_CORE - 1):
+        merge_sub = ("./log_file/" + datetime.datetime.now().strftime(f"%Y-%m-%d-" + str(num) +".log"))
+        with open(merge_sub, "r+") as rf:
+            words = rf.readlines(1000)
+        for word in words:
+            my_list.append(word)
+    
+    with open(merge_main, "w+") as wf:
+        my_list.sort(key=lambda x:x.split()[2])
+        for record in my_list:
+            wf.writelines(record)
+
 def run_server():
     global status_process, process_group
 
@@ -228,6 +244,8 @@ def main():
         global busy_process
         global status_process
         global clients
+
+        time.sleep(2)
         while(True):
             for ID in range(CPU_CORE - 1):
                 try:
@@ -246,6 +264,7 @@ def main():
                     break
 
             if(stop == True):
+                merge_log()
                 s.close()
                 ser.close()
                 print("--------END PROCESS----------")
