@@ -173,8 +173,8 @@ def classify_pkt(flow, key): #will occur flow = [] status....
     keyname = './buffer/keybuffer-' + str(avaliable_pid)
 
     #print((str(avaliable_pid) + "MAN FLOW = ") , flow)
-    with open(flowname, 'wb') as f1:
-        with open(keyname, 'wb') as f2:
+    with open(flowname, 'wb+') as f1:
+        with open(keyname, 'wb+') as f2:
             f1.truncate(0)
             f1.seek(0)
             f2.truncate(0)
@@ -195,22 +195,24 @@ def main():
     except socket.error as e:
         print( e )
         sys.exit()
-    
+
+    Path("./buffer").mkdir(parents=True, exist_ok=True)
+
     # create the log file directory if path is not exist
-    Path("./log_file").mkdir(parents=True, exist_ok=True)
-    log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
-    formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
-                          "source address": "%(s_addr)s",
-                          "destination address": "%(d_addr)s",
-                          "source port": "%(s_port)s",
-                          "destination port": "%(d_port)s",
-                          "class": "%(c)s",
-                          "number of packets": "%(num_pkts)s"
-    })
-    logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, filemode='a',
-                            format=formate,
-                            datefmt='%Y/%m/%d %H:%M:%S'
-    )
+    # Path("./log_file").mkdir(parents=True, exist_ok=True)
+    # log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
+    # formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
+    #                       "source address": "%(s_addr)s",
+    #                       "destination address": "%(d_addr)s",
+    #                       "source port": "%(s_port)s",
+    #                       "destination port": "%(d_port)s",
+    #                       "class": "%(c)s",
+    #                       "number of packets": "%(num_pkts)s"
+    # })
+    # logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, filemode='a',
+    #                         format=formate,
+    #                         datefmt='%Y/%m/%d %H:%M:%S'
+    # )
 
     global status_process
     global clients

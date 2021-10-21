@@ -2,10 +2,12 @@ import socket, pickle
 import torch
 import classifier
 import numpy as np
-import logging
+import logging, json
 import multiprocessing as mp
 import os
 import sys, signal
+import datetime
+from pathlib import Path
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
@@ -77,6 +79,22 @@ HOST = 'localhost'
 PORT = 50008
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
+
+# create the log file directory if path is not exist
+Path("./log_file").mkdir(parents=True, exist_ok=True)
+log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
+formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
+                        "source address": "%(s_addr)s",
+                        "destination address": "%(d_addr)s",
+                        "source port": "%(s_port)s",
+                        "destination port": "%(d_port)s",
+                        "class": "%(c)s",
+                        "number of packets": "%(num_pkts)s"
+})
+logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, filemode='a',
+                        format=formate,
+                        datefmt='%Y/%m/%d %H:%M:%S'
+)
 
 
 msg = (s.recv(4096).decode(encoding = 'utf-8'))
