@@ -4,12 +4,13 @@ import classifier
 import numpy as np
 import logging
 import multiprocessing as mp
-import time
+import os
+import sys, signal
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
 BENIGN_IDX = 10
-CPU_CORE = 8 # os.cpu_count()
+CPU_CORE = os.cpu_count()
 
 lock = mp.Lock()
 
@@ -30,7 +31,6 @@ class JsonFilter(logging.Filter):
         record.num_pkts = self.num_pkts
         return True
 # class JsonFilter
-
 
 def pkt2nparr(flow):
     pkt_content = []
@@ -91,28 +91,31 @@ keyname = './buffer/keybuffer-' + str(MYID)
 
 s.setblocking(False)
 
-while(True):
-    
-    #----NonBlockiing----#
+# pre-define varibles for signal_handler()
+start_signal = b'0x01'
+flow = []
+key = ''
+
+def signal_handler(signum, frame):
+    # Instantly send the stop signal to main process,
+    # and complete the work doing while receiving the SIGINT.
+    s.send(b'\x00')
+
     try:
-        # t_start = time.process_time()
-        
-        signal = s.recv(4096)
-        if(signal == (b'')):
+        if(start_signal == (b'')):
             s.close()
-            break
+            sys.exit(0)
         
         with open(flowname, 'rb') as f1:
             with open(keyname, 'rb') as f2:
                 flow = pickle.load(f1)
-                key = pickle.load(f2)
+                key  = pickle.load(f2)
         
         dealt_flow = pkt2nparr(flow)
         flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
         output = PKT_CLASSIFIER(flow2tensor)
         _, predicted = torch.max(output, 1)
 
-        # print(f"predicted: {predicted[0]}")
         # class 10 represents the benign flow
         if predicted[0] != 10:
             lock.acquire()
@@ -121,7 +124,6 @@ while(True):
             filter_ = JsonFilter()
             logger.addFilter( filter_ )
             inf = key.split(' ')
-            inf_len = len(inf)
             if "s_addr" in inf:
                 filter_.s_addr = inf[1]
                 filter_.d_addr = inf[3]
@@ -132,6 +134,60 @@ while(True):
             filter_.num_pkts = len( flow )
             logger.info( key )
             lock.release()
+
+        s.send(b'\x00')
+    except ValueError:
+        s.send(b'\x00')
+    except:
+        pass
+
+    sys.exit(0)
+# signal_handler()
+
+signal.signal(signal.SIGINT, signal_handler)
+
+while(True):
+    
+    #----NonBlockiing----#
+    try:
+        # t_start = time.process_time()
+        
+        start_signal = s.recv(4096)
+        if(start_signal == (b'')):
+            s.close()
+            break
+        
+        with open(flowname, 'rb') as f1:
+            with open(keyname, 'rb') as f2:
+                flow = pickle.load(f1)
+                key  = pickle.load(f2)
+        
+        dealt_flow = pkt2nparr(flow)
+        flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
+        output = PKT_CLASSIFIER(flow2tensor)
+        _, predicted = torch.max(output, 1)
+
+        # class 10 represents the benign flow
+        if predicted[0] != 10:
+            print(f"predicted: {predicted[0]}, key: {key}")
+            
+            lock.acquire()
+            
+            logger = logging.getLogger()
+            filter_ = JsonFilter()
+            logger.addFilter( filter_ )
+            inf = key.split(' ')
+            if "s_addr" in inf:
+                filter_.s_addr = inf[1]
+                filter_.d_addr = inf[3]
+                if "s_port" in inf:
+                    filter_.s_port = inf[5]
+                    filter_.d_port = inf[7]
+            filter_.c = str( predicted[0] )
+            filter_.num_pkts = len( flow )
+            logger.info( key )
+            lock.release()
+        print("out of predict condition")
 
         # t_end = time.process_time()
         # t_consume = t_end - t_start
@@ -145,4 +201,4 @@ while(True):
         #print("Client" + str(MYID) + " successfully send..............")
     except:
         pass
-
+# while

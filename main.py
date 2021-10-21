@@ -11,6 +11,7 @@ import os, subprocess
 import json, logging
 import datetime
 import signal
+import time
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
@@ -165,41 +166,42 @@ def check_idle():
 
 def classify_pkt(flow, key): #will occur flow = [] status....
         
-        global busy_process
-        global status_process
+    global busy_process
+    global status_process
+    process_amt = CPU_CORE - 1
 
-        if(busy_process < CPU_CORE - 1):
-            # pkt_dest = time.process_time_ns() % proc_create_amt
-            avaliable_pid = hash_key(key)
-            while(status_process[avaliable_pid] == 1): #Linear probing, take no function call
-                avaliable_pid = (avaliable_pid + 1) % (CPU_CORE - 1)
+    if(busy_process < CPU_CORE - 1):
+        # avaliable_pid = hash_key(key)
+        avaliable_pid = time.process_time_ns() % process_amt
+        while(status_process[avaliable_pid] == 1): #Linear probing, take no function call
+            avaliable_pid = (avaliable_pid + 1) % process_amt
 
-        else: #busy_process >=8
-            avaliable_pid = check_idle()
+    else: #busy_process >=8
+        avaliable_pid = check_idle()
 
-        Lock.acquire()
-        status_process[avaliable_pid] = 1
-        busy_process += 1
-        Lock.release()
-        
-        #print("AVALI = ", avaliable_pid)
-        flowname = './buffer/flowbuffer-' + str(avaliable_pid)
-        keyname = './buffer/keybuffer-' + str(avaliable_pid)
-
-        #print((str(avaliable_pid) + "MAN FLOW = ") , flow)
-        with open(flowname, 'wb') as f1:
-            with open(keyname, 'wb') as f2:
-                f1.truncate(0)
-                f1.seek(0)
-                f2.truncate(0)
-                f2.seek(0)
-                pickle.dump(flow, f1)
-                pickle.dump(key, f2)
+    Lock.acquire()
+    status_process[avaliable_pid] = 1
+    busy_process += 1
+    Lock.release()
     
-        clients[avaliable_pid].send(b'\x00')
-        #print("PROCESS STATUS = ", status_process)
+    #print("AVALI = ", avaliable_pid)
+    flowname = './buffer/flowbuffer-' + str(avaliable_pid)
+    keyname = './buffer/keybuffer-' + str(avaliable_pid)
 
-        flow.clear()
+    #print((str(avaliable_pid) + "MAN FLOW = ") , flow)
+    with open(flowname, 'wb') as f1:
+        with open(keyname, 'wb') as f2:
+            f1.truncate(0)
+            f1.seek(0)
+            f2.truncate(0)
+            f2.seek(0)
+            pickle.dump(flow, f1)
+            pickle.dump(key, f2)
+
+    clients[avaliable_pid].send(b'\x00')
+    #print("PROCESS STATUS = ", status_process)
+
+    flow.clear()
 # classify_pkt()
 
 def main():
@@ -236,47 +238,45 @@ def main():
     run_server()
     ser.setblocking(False)
 
-    # def signal_handler(signum, frame):
-    #     global busy_process
-    #     global status_process
-    #     global clients
-    #     while(True):
-    #         for ID in range(CPU_CORE - 1):
-    #             try:
-    #                 p_status = clients[ID].recv(4096)
-    #                 Lock.acquire()
-    #                 status_process[ID] = 0
-    #                 busy_process -= 1
-    #                 Lock.release()
-    #             except:
-    #                 pass
+    def signal_handler(signum, frame):
+        global busy_process
+        global status_process
+        global clients
+        while(True):
+            for ID in range(CPU_CORE - 1):
+                try:
+                    p_status = clients[ID].recv(4096)
+                    Lock.acquire()
+                    status_process[ID] = 0
+                    busy_process -= 1
+                    Lock.release()
+                except:
+                    pass
                 
-    #         stop = True
-    #         for ID in range(CPU_CORE - 1):
-    #             if(status_process[ID] == 1):
-    #                 stop = False
-    #                 break
+            stop = True
+            for ID in range(CPU_CORE - 1):
+                if(status_process[ID] == 1):
+                    stop = False
+                    break
 
-    #         if(stop == True):
-    #             s.close()
-    #             ser.close()
-    #             print("--------END PROCESS----------")
-    #             break
-    # # signal_handler()
+            if(stop == True):
+                s.close()
+                ser.close()
+                print("--------END PROCESS----------")
+                break
+        # while
+        sys.exit(0)
+    # signal_handler()
 
-    # # capture SIGINT signal to avoid the generating of the zombie processes
-    # signal.signal(signal.SIGINT, signal_handler)
+    # capture SIGINT signal to avoid the generating of the zombie processes
+    signal.signal(signal.SIGINT, signal_handler)
 
     while True:
-        # if recv_pkt_amt >= 10:
-        #     break
         
         #-----RECV FROM DEVICE------#
         packet = s.recvfrom( 65565 )
         pkt = packet[0]
         key = get_key(pkt)
-
-        # recv_pkt_amt += 1
         
         #--------IPC-----------#
         for i in range(CPU_CORE - 1):
