@@ -34,22 +34,6 @@ busy_process = 0
 
 Lock = mp.Lock()
 
-# def getflags( packet ):
-#     # URG = packet & 0x020
-#     # URG >>= 5
-#     # ACK = packet & 0x010
-#     # ACK >>= 4
-#     # PSH = packet & 0x008
-#     # PSH >>= 3
-#     # RST = packet & 0x004
-#     # RST >>= 2
-#     # SYN = packet & 0x002
-#     # SYN >>= 1
-#     FIN = packet & 0x001
-#     FIN >>= 0
-
-#     return FIN
-
 def get_key(pkt):
     key = ''
 
@@ -127,7 +111,7 @@ def get_key(pkt):
 # get_key()
 
 def run_server():
-    global status_process
+    global status_process, process_group
 
     #--------IPC-----------#
     for client_id in range(CPU_CORE - 1):

@@ -97,8 +97,9 @@ flow = []
 key = ''
 
 def signal_handler(signum, frame):
+
     # Instantly send the stop signal to main process,
-    # and complete the work doing while receiving the SIGINT.
+    # and complete the work interrupted while receiving the SIGINT.
     s.send(b'\x00')
 
     try:
@@ -169,8 +170,6 @@ while(True):
 
         # class 10 represents the benign flow
         if predicted[0] != 10:
-            print(f"predicted: {predicted[0]}, key: {key}")
-            
             lock.acquire()
             
             logger = logging.getLogger()
@@ -187,7 +186,6 @@ while(True):
             filter_.num_pkts = len( flow )
             logger.info( key )
             lock.release()
-        print("out of predict condition")
 
         # t_end = time.process_time()
         # t_consume = t_end - t_start
