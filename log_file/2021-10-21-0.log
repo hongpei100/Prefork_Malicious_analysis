@@ -1,0 +1,5 @@
+{"timestamp": "2021/10/21 22:49:19.256", "source address": "127.0.0.53", "destination address": "127.0.0.1", "source port": "53", "destination port": "53590", "class": "tensor(1)", "number of packets": "2"}
+{"timestamp": "2021/10/21 22:49:22.621", "source address": "127.0.0.1", "destination address": "127.0.0.1", "source port": "57504", "destination port": "50008", "class": "tensor(9)", "number of packets": "8"}
+{"timestamp": "2021/10/21 22:49:24.494", "source address": "127.0.0.1", "destination address": "127.0.0.1", "source port": "57500", "destination port": "50008", "class": "tensor(9)", "number of packets": "8"}
+{"timestamp": "2021/10/21 22:49:32.499", "source address": "192.168.0.1", "destination address": "10.0.2.15", "source port": "53", "destination port": "50657", "class": "tensor(9)", "number of packets": "1"}
+{"timestamp": "2021/10/21 22:49:36.239", "source address": "127.0.0.1", "destination address": "127.0.0.53", "source port": "53590", "destination port": "53", "class": "tensor(1)", "number of packets": "2"}

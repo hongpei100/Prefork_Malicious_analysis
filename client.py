@@ -82,7 +82,16 @@ s.connect((HOST, PORT))
 
 # create the log file directory if path is not exist
 Path("./log_file").mkdir(parents=True, exist_ok=True)
-log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d.log")
+
+MYID = 0
+msg = (s.recv(4096).decode(encoding = 'utf-8'))
+for i in range(CPU_CORE - 1):
+    if(msg == "My ID is " + str(i)):
+        MYID = i
+        print("MYID = ", MYID)
+        break
+
+log_filename = datetime.datetime.now().strftime(f"%Y-%m-%d-" + str( MYID ) +".log")
 formate = json.dumps({"timestamp": "%(asctime)s.%(msecs)03d",
                         "source address": "%(s_addr)s",
                         "destination address": "%(d_addr)s",
@@ -95,14 +104,6 @@ logging.basicConfig(level=logging.INFO, filename="./log_file/" + log_filename, f
                         format=formate,
                         datefmt='%Y/%m/%d %H:%M:%S'
 )
-
-
-msg = (s.recv(4096).decode(encoding = 'utf-8'))
-for i in range(CPU_CORE - 1):
-    if(msg == "My ID is " + str(i)):
-        MYID = i
-        print("MYID = ", MYID)
-        break
 
 flowname = './buffer/flowbuffer-' + str(MYID)
 keyname = './buffer/keybuffer-' + str(MYID)
