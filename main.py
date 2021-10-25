@@ -196,7 +196,7 @@ def classify_pkt(flow, key): #will occur flow = [] status....
     t_end = time.process_time_ns()
     
     with open( "./write_time", "a" ) as f:
-        f.write( str( t_start - t_end ) )
+        f.write( str( t_end - t_start ) + '\n' )
     
     clients[avaliable_pid].send(b'\x00')
     flow.clear()
@@ -223,52 +223,52 @@ def main():
     run_server()
     ser.setblocking(False)
 
-    def signal_handler(signum, frame):
-        global busy_process
-        global status_process
-        global clients
+    # def signal_handler(signum, frame):
+    #     global busy_process
+    #     global status_process
+    #     global clients
 
-        # sleep for a long time due to Timer may trasmit data after finding 
-        # there's no busy process
-        time.sleep(5)
-        while(True):
-            for ID in range(CPU_CORE - 1):
-                try:
-                    p_status = clients[ID].recv(4096)
-                    Lock.acquire()
-                    status_process[ID] = 0
-                    busy_process -= 1
-                    Lock.release()
-                except:
-                    pass
+    #     # sleep for a long time due to Timer may trasmit data after finding 
+    #     # there's no busy process
+    #     time.sleep(5)
+    #     while(True):
+    #         for ID in range(CPU_CORE - 1):
+    #             try:
+    #                 p_status = clients[ID].recv(4096)
+    #                 Lock.acquire()
+    #                 status_process[ID] = 0
+    #                 busy_process -= 1
+    #                 Lock.release()
+    #             except:
+    #                 pass
                 
-            stop = True
-            for ID in range(CPU_CORE - 1):
-                if(status_process[ID] == 1):
-                    stop = False
-                    break
+    #         stop = True
+    #         for ID in range(CPU_CORE - 1):
+    #             if(status_process[ID] == 1):
+    #                 stop = False
+    #                 break
 
             
-            if(stop == True):
+    #         if(stop == True):
 
-                # check there's no busy_process twice
-                if busy_process != 0:
-                    continue
-                merge_log()
-                s.close()
-                ser.close()
-                print("\n--------END PROCESS----------")
-                break
-        # while
+    #             # check there's no busy_process twice
+    #             if busy_process != 0:
+    #                 continue
+    #             merge_log()
+    #             s.close()
+    #             ser.close()
+    #             print("\n--------END PROCESS----------")
+    #             break
+    #     # while
 
-        sys.exit(0)
-    # signal_handler()
+    #     sys.exit(0)
+    # # signal_handler()
 
-    # capture SIGINT signal to avoid the generating of the zombie processes
-    signal.signal(signal.SIGINT, signal_handler)
+    # # capture SIGINT signal to avoid the generating of the zombie processes
+    # signal.signal(signal.SIGINT, signal_handler)
 
     while True:
-        
+        recv_pkt_amt += 1
         #-----RECV FROM DEVICE------#
         packet = s.recvfrom( 65565 )
         pkt = packet[0]
@@ -299,6 +299,39 @@ def main():
                 flows[key].append( pkt )
                 timers[key] = Timer( 1.0, classify_pkt, (flows[key], key) )
                 timers[key].start()
+        
+        if recv_pkt_amt >= 100:
+            break
+    # while
+
+    time.sleep(5)
+    while(True):
+        for ID in range(CPU_CORE - 1):
+            try:
+                p_status = clients[ID].recv(4096)
+                Lock.acquire()
+                status_process[ID] = 0
+                busy_process -= 1
+                Lock.release()
+            except:
+                pass
+            
+        stop = True
+        for ID in range(CPU_CORE - 1):
+            if(status_process[ID] == 1):
+                stop = False
+                break
+        
+        if(stop == True):
+
+            # check there's no busy_process twice
+            if busy_process != 0:
+                continue
+            merge_log()
+            s.close()
+            ser.close()
+            print("\n--------END PROCESS----------")
+            break
     # while
 # main()
 

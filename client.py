@@ -185,7 +185,7 @@ while(True):
         t_end = time.process_time_ns()
 
         with open( "./read_time", "a" ) as f:
-            f.write( str( t_start - t_end ) )
+            f.write( str( t_end - t_start ) + '\n' )
         
         t_start = time.process_time_ns()
         # -----------------------------------
@@ -197,7 +197,7 @@ while(True):
         t_end = time.process_time_ns()
 
         with open( "./classify_time", "a" ) as f:
-            f.write( str( t_start - t_end ) )
+            f.write( str( t_end - t_start ) + '\n' )
 
         t_start = time.process_time_ns()
         # -----------------------------------
@@ -220,7 +220,7 @@ while(True):
         t_end = time.process_time_ns()
 
         with open( "./log_time", "a" ) as f:
-            f.write( str( t_start - t_end ) )
+            f.write( str( t_end - t_start ) + '\n' )
 
         s.send(b'\x00')
     except ValueError:
