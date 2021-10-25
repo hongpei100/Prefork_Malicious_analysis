@@ -112,59 +112,59 @@ keyname = './buffer/keybuffer-' + str(MYID)
 s.setblocking(False)
 
 # pre-define varibles for signal_handler()
-start_signal = b'0x01'
-flow = []
-key = ''
+# start_signal = b'0x01'
+# flow = []
+# key = ''
 
-def signal_handler(signum, frame):
-    while True:
-        try:
-            start_signal = s.recv(4096)
-            if(start_signal == (b'')):
-                s.close()
-                sys.exit(0)
+# def signal_handler(signum, frame):
+#     while True:
+#         try:
+#             start_signal = s.recv(4096)
+#             if(start_signal == (b'')):
+#                 s.close()
+#                 sys.exit(0)
             
-            # -----------------------------------
-            with open(flowname, 'rb') as f1:
-                with open(keyname, 'rb') as f2:
-                    flow = pickle.load(f1)
-                    key  = pickle.load(f2)
-            # -----------------------------------
+#             # -----------------------------------
+#             with open(flowname, 'rb') as f1:
+#                 with open(keyname, 'rb') as f2:
+#                     flow = pickle.load(f1)
+#                     key  = pickle.load(f2)
+#             # -----------------------------------
             
-            # -----------------------------------
-            dealt_flow = pkt2nparr(flow)
-            flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
-            output = PKT_CLASSIFIER(flow2tensor)
-            _, predicted = torch.max(output, 1)
-            # -----------------------------------
+#             # -----------------------------------
+#             dealt_flow = pkt2nparr(flow)
+#             flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
+#             output = PKT_CLASSIFIER(flow2tensor)
+#             _, predicted = torch.max(output, 1)
+#             # -----------------------------------
 
-            # -----------------------------------
-            # class 10 represents the benign flow
-            if predicted[0] != 10:
-                logger = logging.getLogger()
-                filter_ = JsonFilter()
-                logger.addFilter( filter_ )
-                inf = key.split(' ')
-                if "s_addr" in inf:
-                    filter_.s_addr = inf[1]
-                    filter_.d_addr = inf[3]
-                    if "s_port" in inf:
-                        filter_.s_port = inf[5]
-                        filter_.d_port = inf[7]
-                filter_.c = str( predicted[0] )
-                filter_.num_pkts = len( flow )
-                logger.info( key )
-            # -----------------------------------
+#             # -----------------------------------
+#             # class 10 represents the benign flow
+#             if predicted[0] != 10:
+#                 logger = logging.getLogger()
+#                 filter_ = JsonFilter()
+#                 logger.addFilter( filter_ )
+#                 inf = key.split(' ')
+#                 if "s_addr" in inf:
+#                     filter_.s_addr = inf[1]
+#                     filter_.d_addr = inf[3]
+#                     if "s_port" in inf:
+#                         filter_.s_port = inf[5]
+#                         filter_.d_port = inf[7]
+#                 filter_.c = str( predicted[0] )
+#                 filter_.num_pkts = len( flow )
+#                 logger.info( key )
+#             # -----------------------------------
 
-            s.send(b'\x00')
-        except ValueError:
-            s.send(b'\x00')
-        except:
-            s.send(b'\x00')
-            pass
-# signal_handler()
+#             s.send(b'\x00')
+#         except ValueError:
+#             s.send(b'\x00')
+#         except:
+#             s.send(b'\x00')
+#             pass
+# # signal_handler()
 
-signal.signal(signal.SIGINT, signal_handler)
+# signal.signal(signal.SIGINT, signal_handler)
 
 while(True):
     

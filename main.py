@@ -15,7 +15,7 @@ import time
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
 BENIGN_IDX = 10
-CPU_CORE = 2
+CPU_CORE = 4
 
 PKT_CLASSIFIER = classifier.CNN_RNN()
 PKT_CLASSIFIER.load_state_dict(torch.load("pkt_classifier.pt", map_location=torch.device("cpu")))
@@ -304,7 +304,7 @@ def main():
             break
     # while
 
-    time.sleep(5)
+    # time.sleep(2)
     while(True):
         for ID in range(CPU_CORE - 1):
             try:
