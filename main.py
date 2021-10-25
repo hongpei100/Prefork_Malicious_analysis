@@ -186,11 +186,18 @@ def classify_pkt(flow, key): #will occur flow = [] status....
     flowname = './buffer/flowbuffer-' + str(avaliable_pid)
     keyname = './buffer/keybuffer-' + str(avaliable_pid)
 
+    t_start = time.process_time_ns()
+    # -----------------------------------
     with open(flowname, 'wb+') as f1:
         with open(keyname, 'wb+') as f2:
             pickle.dump(flow, f1)
             pickle.dump(key, f2)
-
+    # -----------------------------------
+    t_end = time.process_time_ns()
+    
+    with open( "./write_time", "a" ) as f:
+        f.write( str( t_start - t_end ) )
+    
     clients[avaliable_pid].send(b'\x00')
     flow.clear()
 # classify_pkt()

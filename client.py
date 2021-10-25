@@ -8,6 +8,7 @@ import os
 import sys, signal
 import datetime
 from pathlib import Path
+import time
 
 FIRST_N_PKTS = 8
 FIRST_N_BYTES = 80
@@ -123,16 +124,21 @@ def signal_handler(signum, frame):
                 s.close()
                 sys.exit(0)
             
+            # -----------------------------------
             with open(flowname, 'rb') as f1:
                 with open(keyname, 'rb') as f2:
                     flow = pickle.load(f1)
                     key  = pickle.load(f2)
+            # -----------------------------------
             
+            # -----------------------------------
             dealt_flow = pkt2nparr(flow)
             flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
             output = PKT_CLASSIFIER(flow2tensor)
             _, predicted = torch.max(output, 1)
+            # -----------------------------------
 
+            # -----------------------------------
             # class 10 represents the benign flow
             if predicted[0] != 10:
                 logger = logging.getLogger()
@@ -148,6 +154,7 @@ def signal_handler(signum, frame):
                 filter_.c = str( predicted[0] )
                 filter_.num_pkts = len( flow )
                 logger.info( key )
+            # -----------------------------------
 
             s.send(b'\x00')
         except ValueError:
@@ -168,16 +175,32 @@ while(True):
             s.close()
             break
         
+        t_start = time.process_time_ns()
+        # -----------------------------------
         with open(flowname, 'rb') as f1:
             with open(keyname, 'rb') as f2:
                 flow = pickle.load(f1)
                 key  = pickle.load(f2)
+        # -----------------------------------
+        t_end = time.process_time_ns()
+
+        with open( "./read_time", "a" ) as f:
+            f.write( str( t_start - t_end ) )
         
+        t_start = time.process_time_ns()
+        # -----------------------------------
         dealt_flow = pkt2nparr(flow)
         flow2tensor = torch.tensor(dealt_flow, dtype=torch.float)
         output = PKT_CLASSIFIER(flow2tensor)
         _, predicted = torch.max(output, 1)
+        # -----------------------------------
+        t_end = time.process_time_ns()
 
+        with open( "./classify_time", "a" ) as f:
+            f.write( str( t_start - t_end ) )
+
+        t_start = time.process_time_ns()
+        # -----------------------------------
         # class 10 represents the benign flow
         if predicted[0] != 10:
             logger = logging.getLogger()
@@ -193,6 +216,12 @@ while(True):
             filter_.c = str( predicted[0] )
             filter_.num_pkts = len( flow )
             logger.info( key )
+        # -----------------------------------
+        t_end = time.process_time_ns()
+
+        with open( "./log_time", "a" ) as f:
+            f.write( str( t_start - t_end ) )
+
         s.send(b'\x00')
     except ValueError:
         s.send(b'\x00')
